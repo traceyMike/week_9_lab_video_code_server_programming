@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Student Sign In</title>
+    <title>Student Sign In</title> <!--head elements includes vue library-->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css">
@@ -10,31 +10,40 @@
 </head>
 
 <body>
-    <div id="app">
-        
+    <div id="app"> <!-- indicating part of page vue is going to manage -->
+        <!--any element inside this div, vue is going to work with-->
         <div id="new-student-form-errors" class="m-2">
             <!-- TODO show errors from form validation -->
+            <!--{{ formErrors }} lets vue know this is data we need - work effectively -->
+             <div v-if="formErrors.length > 0" class="alert alert-danger"> <!-- alert-danger from bootstrap -->
+                <li v-for="error in formErrors"> <!--create pink box for errors-->
+                    {{ error }} <!--if more than 0 form errors display box-->
+                </li>
+             </div>
+
         </div>
 
-
+        <!--this div is for showing errors and form validation-->
+        <!--this div is for add new student form html-->
         <div id="new-student-form" class="card add-student m-2 p-2">
             <h4 class="card-title">Add new student</h4>
 
             <div class="form-group mb-3">
                 <label for="name">Name</label>
                 <!-- TODO v-model newStudentName -->
-                <input id="name" class="form-control">
-            </div>
+                <input v-model.trim="newStudentName" id="name" class="form-control">
+            </div> <!--add .trim after v-model, no blank space in input-->
 
             <div class="form-group mb-3">
                 <label for="starID">Star ID</label>
                  <!-- TODO v-model newStarID -->
-                <input id="starID" class="form-control">
+                <input v-model.trim="newStarID" id="starID" class="form-control">
             </div>
 
             <!-- TODO v-on:click event handler -->
-            <button class="btn btn-primary">Add</button>
-        </div>
+             <!-- v-on:click everytime click event, add new student use addStudents function-->
+            <button v-on:click="addStudent" class="btn btn-primary">Add</button>
+        </div> <!--end of new student form html-->
 
 
         <div id="student-list-table" class="card m-2 p-2">
@@ -49,11 +58,32 @@
                         </tr>
                     </thead>
 
-                   <tbody>
-                        <!-- TODO create table rows 
+                   <tbody> <!--table stored by vue, vue creates rows-->
+                        <!-- TODO create table rows
                         Each row will have a checkbox, bound to the app's data 
                         When the checkbox is checked/unchecked, 
                         the student will be signed in/out -->
+                        <!--use v-bind to style rows-->     <!--creating an object, name of class present and after is a boolean-->
+                        <tr v-for="student in studentList" v-bind:class="{ present: student.present, absent: !student.present }"> <!-- <tr> inside table row we put table data -->
+                            
+                            <!-- create loop for table data -->
+                             <!--table data style the rows via bootstrap classes-->
+                            <td>{{ student.name }}</td>
+                            <td>{{ student.starID }}</td>
+
+                            <td> <!--todo checkbox for present/absent-->
+                              <input type="checkbox" v-model="student.present" v-on:change="arrivedOrLeft(student)"> <!--update each student present property-use checkbox-->
+                              <span v-if="student.present" class="mx-3">Here!</span> <!--checkbox says present if checked and vice versa-->
+                              <span v-else class="mx-3">Not present!</span> <!--add styling mx-3-->
+                            </td> <!--todo delete button-->
+
+                            <td> <!--create a trash logo delete button next to student list info-->
+                                <!--add the v-on:click delete and student object to delete the student-->
+                                <button v-on:click="deleteStudent(student)" class="btn btn-danger" >
+                                    <i class="bi bi-trash-fill"></i>Delete</button>
+                            </td>
+
+                        </tr>
 
                    </tbody>
 
@@ -64,14 +94,125 @@
         <div id="welcome-or-goodbye-message" class="m-2">
             
             <!-- TODO show a message when student arrives or leaves  -->
-            
+            <div v-if="mostRecentStudent.name">
+                                                        <!--class= is bootstrap styling-->
+                    <div v-if="mostRecentStudent.present" class="alert alert-success">
+                        Welcome, {{ mostRecentStudent.name}}!
+                    </div>
+                    <div v-else class="alert alert-info"> <!--more bootstrap-->
+                        Goodbye! {{ mostRecentStudent.name}}, see you later!
+                    </div>
+            </div>
         </div>
 
     </div>
 
     <script>
+        // set up the vue app here
+        const { createApp, ref, computed } = Vue; // import functions 
 
-        // TODO Vue app 
+        createApp({
+            setup() { // when app loads on page, setup function is called
+                // create reactive data
+                const newStudentName = ref('') // v model to name
+                const newStarID = ref('') // v model to star id input
+                // students have name, star id, apps tracks who is here (boolean, true false)
+                const studentList = ref ([
+                    { name: 'A. Student', starID: '344rr55', present: false },
+                    { name: 'meow meow', starID: 'eow12346', present: true}
+            
+                ])
+            
+                const formErrors = ref([])
+
+                const mostRecentStudent = ref ({})
+            
+                // create functions
+
+                function addStudent() {
+
+                    formErrors.value = [] // reset to empty array
+
+                    // check to see if newStudentName is valid
+                    if (newStudentName.value.length === 0) {
+                        formErrors.value.push('Student name must be entered')
+                    }
+                    // starID validation must not be = to 0
+                    if (newStarID.value.length === 0) {
+                        formErrors.value.push('StarID must be entered')
+                    }
+
+                    // if no errors - is the form valid
+                    // making of new student object - wrap in if statement
+                    if (formErrors.value.length == 0) {
+                    let student = {
+                        name: newStudentName.value,
+                        starID: newStarID.value,
+                        present: false
+                    }
+                    // studentList.value is the array - have method called push
+                    studentList.value.push(student) // push new student list object to back of array 
+                    newStudentName.value = ''
+                    newStarID.value = ""
+                }
+            }
+                // create computed properties
+
+                function arrivedOrLeft(student) {
+                    //alert(student.name)
+                    mostRecentStudent.value = student
+                }
+
+                // create function for deleting the students
+                function deleteStudent(studentToDelete) { // keep every student who is not the one to delete
+                    if (confirm(`Delete ${studentToDelete.name}?`)) {
+                    studentList.value = studentList.value.filter( student => student != studentToDelete)
+                    }
+                    
+                    
+                    // filter is like foreach, goes thru each student in array, boolean, keep student or not
+
+
+                //    const studentListWithoutDeleteStudent = [] // create empty array, stores students not to delete
+                //    studentList.value.forEach(student => { // iterate over each student in studentList.value
+                //        if (student != studentsToDelete) { // checks if current student is not one to delete, if no match then student added to studentsListWithoutDeleteStudent
+                //            studentListWithoutDeleteStudent.push(student) // studentList.value is updated to be new array, remove student to delete from original
+                //        }
+                //    })
+                ////    studentList.value = studentListWithoutDeleteStudent
+                }
+
+                const sortedStudents = computed(  () => {
+                        
+                    return studentList.value.toSorted( (student1, student2) => {
+                        // toSorted calls function with every pair of students in list
+                        // return of functions figures out if students is before or after
+                        // orders students
+                        return student1.name.localCompare(student2.name)
+                    })
+                })
+
+                
+
+                return {
+                    // reactive data
+                    studentList,
+                    newStudentName,
+                    newStarID,
+                    formErrors,
+                    mostRecentStudent,
+                    // return functions
+                    addStudent,
+                    arrivedOrLeft,
+                    deleteStudent,
+
+                    // return computed properties
+                    sortedStudents
+
+                }
+            }
+        }).mount('#app'); // a selector of div with id app 
+        
 
     </script>
 
